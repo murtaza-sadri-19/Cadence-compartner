@@ -11,7 +11,7 @@ node server.js
 # open http://localhost:3000
 ```
 
-Or open `cadence.html` directly in Chrome/Edge (mic permissions work better that way).
+Or open `index.html` directly in Chrome/Edge (mic permissions work better that way).
 
 ## Health endpoint
 

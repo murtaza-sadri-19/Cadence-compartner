@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const file = req.url === '/' ? '/cadence.html' : req.url;
+  const file = req.url === '/' ? '/index.html' : req.url;
   const filePath = path.join(__dirname, file);
   const ext = path.extname(filePath);
 
