@@ -63,7 +63,7 @@
   }
   .session-controls{display:flex;align-items:center;gap:14px;}
   .timer{font-family:var(--mono);font-size:20px;color:var(--amber);letter-spacing:0.03em;min-width:64px;text-align:right;}
-  .btn-primary, .btn-ghost{
+  .btn-primary, .btn-ghost, .btn-sm{
     font-family:var(--mono);font-size:12.5px;letter-spacing:0.05em;text-transform:uppercase;
     padding:11px 20px;border-radius:var(--radius);cursor:pointer;border:1px solid transparent;
     transition:transform .12s ease, background .15s ease, border-color .15s ease;
@@ -73,6 +73,12 @@
   .btn-primary.recording{background:var(--red);border-color:var(--red);color:#210505;}
   .btn-ghost{background:transparent;color:var(--text-dim);border-color:var(--line);}
   .btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+  .btn-sm{padding:7px 14px;font-size:11px;}
+  .kbd{
+    display:inline-block;font-family:var(--mono);font-size:10px;
+    padding:2px 6px;border:1px solid var(--text-faint);border-radius:3px;
+    color:var(--text-dim);margin-left:6px;vertical-align:middle;
+  }
 
   .console{
     display:grid;
@@ -154,10 +160,11 @@
   .report.hidden, .console.hidden{display:none;}
   .report-hero{
     background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:22px 24px;
+    padding:22px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
   }
   .report-hero h2{margin:0 0 4px;font-size:22px;font-weight:600;}
   .report-hero p{margin:0;color:var(--text-dim);font-family:var(--mono);font-size:12px;}
+  .report-actions{display:flex;gap:10px;flex-wrap:wrap;}
   .stat-grid{
     display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;
   }
@@ -168,7 +175,15 @@
   .stat-card .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-dim);}
   .stat-card .value{font-family:var(--mono);font-size:26px;color:var(--amber);font-weight:600;margin-top:6px;}
   .stat-card .value.cyan{color:var(--cyan);}
+  .stat-card .value.green{color:var(--green);}
   .stat-card .sub{font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .score-card{
+    background:var(--bg-panel);border:1px solid var(--amber);border-radius:var(--radius);
+    padding:24px;text-align:center;
+  }
+  .score-card .score{font-family:var(--mono);font-size:52px;color:var(--amber);font-weight:700;line-height:1;}
+  .score-card .score-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-dim);margin-top:6px;}
 
   .chart-card{
     background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -185,6 +200,17 @@
   .feedback ul{margin:0;padding-left:18px;}
   .feedback li{margin-bottom:8px;line-height:1.55;font-size:14.5px;}
   .feedback li::marker{color:var(--amber);}
+
+  .history-panel{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .history-panel .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-dim);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+  .history-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+  .history-table th{text-align:left;color:var(--text-dim);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:0.06em;font-size:10px;}
+  .history-table td{padding:6px 8px;border-bottom:1px solid rgba(255,176,0,0.05);color:var(--text);}
+  .history-table tr:hover td{background:rgba(255,176,0,0.03);}
+  .history-empty{color:var(--text-faint);font-family:var(--mono);font-size:12px;padding:12px 0;}
 
   @media (max-width:760px){
     .console{grid-template-columns:1fr;}
@@ -210,7 +236,7 @@
     </div>
     <div class="session-controls">
       <span id="timer" class="timer">00:00</span>
-      <button id="toggleBtn" class="btn-primary">Start session</button>
+      <button id="toggleBtn" class="btn-primary">Start session <span class="kbd">Space</span></button>
     </div>
   </header>
 
@@ -280,7 +306,16 @@ import { PitchDetector } from "pitchy";
   const consoleView = document.getElementById('consoleView');
   const reportView = document.getElementById('reportView');
 
-  const FILLER_RE = /\b(um+|uh+|erm+|like|you know|i mean|so basically|actually)\b/gi;
+  const HESITATIONS = /\b(um+|uh+|erm+|ah+|eh+|hm+|hmm+|mm+)\b/gi;
+  const FILLER_WORDS = /\b(like|basically|actually|literally|right|sort of|kind of|you know|i guess|i think|so|well|mean|anyway)\b/gi;
+  const FILLER_PHRASES = /\b(you know what i mean|you know what i'm saying|you know what i said|how do you say|how should i put it|what's the word|what's it called|let me think|give me a second)\b/gi;
+  const CRUTCH_WORDS = /\b(basically|literally|honestly|frankly|obviously|clearly|definitely|absolutely|totally|completely|literally)\b/gi;
+  const FILLER_RE = new RegExp('(' + [
+    HESITATIONS.source,
+    FILLER_PHRASES.source,
+    FILLER_WORDS.source,
+  ].join('|') + ')', 'gi');
+  const STORAGE_KEY = 'cadence_sessions';
 
   let audioCtx, analyser, source, stream, recognition, pitchDetector;
   let recording = false;
@@ -289,6 +324,7 @@ import { PitchDetector } from "pitchy";
   let bucketInterval = null;
   let scopeRaf = null;
   let pitchInterval = null;
+  let silenceInterval = null;
 
   let wordCount = 0;
   let fillerCount = 0;
@@ -303,6 +339,11 @@ import { PitchDetector } from "pitchy";
   let bucketPitchSamples = [];
   let bucketClaritySamples = [];
   const BUCKET_SEC = 3;
+
+  let silenceStart = 0;
+  let totalSilenceMs = 0;
+  let longestPauseMs = 0;
+  const SILENCE_THRESHOLD_DB = -45;
 
   function resizeScope(){
     scopeCanvas.width = scopeCanvas.clientWidth * devicePixelRatio;
@@ -368,6 +409,22 @@ import { PitchDetector } from "pitchy";
     }
   }
 
+  function silenceTick(){
+    const lastVol = bucketVolSamples.length ? bucketVolSamples[bucketVolSamples.length-1] : -60;
+    if (lastVol > SILENCE_THRESHOLD_DB){
+      if (silenceStart > 0){
+        const pauseDur = Date.now() - silenceStart;
+        if (pauseDur > 1000){
+          totalSilenceMs += pauseDur;
+          if (pauseDur > longestPauseMs) longestPauseMs = pauseDur;
+        }
+        silenceStart = 0;
+      }
+    } else {
+      if (silenceStart === 0) silenceStart = Date.now();
+    }
+  }
+
   function pushBucket(){
     const elapsedMin = BUCKET_SEC/60;
     const bucketWpm = bucketWordsAccum / elapsedMin;
@@ -384,6 +441,22 @@ import { PitchDetector } from "pitchy";
     wpmValue.innerHTML = Math.round(overallWpm)+'<small>wpm</small>';
   }
 
+  function categorizeFillers(text){
+    const cats = {hesitations:0, crutch:0, phrases:0, words:0};
+    let m;
+    HESITATIONS.lastIndex = 0;
+    while ((m = HESITATIONS.exec(text)) !== null) cats.hesitations++;
+    CRUTCH_WORDS.lastIndex = 0;
+    while ((m = CRUTCH_WORDS.exec(text)) !== null) cats.crutch++;
+    FILLER_PHRASES.lastIndex = 0;
+    while ((m = FILLER_PHRASES.exec(text)) !== null) cats.phrases++;
+    FILLER_WORDS.lastIndex = 0;
+    while ((m = FILLER_WORDS.exec(text)) !== null) cats.words++;
+    return cats;
+  }
+
+  let fillerBreakdown = {hesitations:0, crutch:0, phrases:0, words:0};
+
   function setupRecognition(){
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
@@ -397,8 +470,14 @@ import { PitchDetector } from "pitchy";
         const res = event.results[i];
         const text = res[0].transcript;
         if (res.isFinal){
-          const fillers = text.match(FILLER_RE);
-          if (fillers){ fillerCount += fillers.length; fillerValue.textContent = fillerCount; }
+          const cats = categorizeFillers(text);
+          const chunkFillers = cats.hesitations + cats.crutch + cats.phrases + cats.words;
+          fillerCount += chunkFillers;
+          fillerBreakdown.hesitations += cats.hesitations;
+          fillerBreakdown.crutch += cats.crutch;
+          fillerBreakdown.phrases += cats.phrases;
+          fillerBreakdown.words += cats.words;
+          fillerValue.textContent = fillerCount;
           const words = text.trim().split(/\s+/).filter(Boolean);
           wordCount += words.length;
           bucketWordsAccum += words.length;
@@ -460,14 +539,16 @@ import { PitchDetector } from "pitchy";
     recording = true;
     startTime = Date.now();
     wordCount = 0; fillerCount = 0; finalTranscript = ''; buckets = [];
+    fillerBreakdown = {hesitations:0, crutch:0, phrases:0, words:0};
     bucketWordsAccum = 0; bucketVolSamples = []; bucketPitchSamples = []; bucketClaritySamples = [];
+    silenceStart = 0; totalSilenceMs = 0; longestPauseMs = 0;
     wordsValue.textContent = '0'; fillerValue.textContent = '0';
     wpmValue.innerHTML = '0<small>wpm</small>';
     pitchValue.innerHTML = '–<small>Hz</small>';
     clarityValue.innerHTML = '–<small>%</small>';
     transcriptEl.innerHTML = '';
 
-    toggleBtn.textContent = 'Stop session';
+    toggleBtn.textContent = 'Stop session ';
     toggleBtn.classList.add('recording');
     statusMsg.classList.remove('warn');
     statusMsg.textContent = recognitionSupported
@@ -477,6 +558,7 @@ import { PitchDetector } from "pitchy";
     drawScope();
     pitchInterval = setInterval(pitchTick, 80);
     bucketInterval = setInterval(pushBucket, BUCKET_SEC*1000);
+    silenceInterval = setInterval(silenceTick, 500);
     timerInterval = setInterval(() => {
       timerEl.textContent = fmtTime((Date.now()-startTime)/1000);
     }, 250);
@@ -489,22 +571,84 @@ import { PitchDetector } from "pitchy";
     clearInterval(timerInterval);
     clearInterval(bucketInterval);
     clearInterval(pitchInterval);
+    clearInterval(silenceInterval);
     cancelAnimationFrame(scopeRaf);
     if (recognition) { try { recognition.stop(); } catch(e){} }
     if (stream) stream.getTracks().forEach(t => t.stop());
     if (audioCtx) audioCtx.close();
 
-    toggleBtn.textContent = 'Start session';
+    if (silenceStart > 0){
+      const pauseDur = Date.now() - silenceStart;
+      if (pauseDur > 1000){
+        totalSilenceMs += pauseDur;
+        if (pauseDur > longestPauseMs) longestPauseMs = pauseDur;
+      }
+    }
+
+    toggleBtn.textContent = 'Start session ';
     toggleBtn.classList.remove('recording');
     statusMsg.textContent = 'Session ended.';
 
     if (buckets.length === 0 || bucketWordsAccum > 0) pushBucket();
-    renderReport();
+    const report = buildReport();
+    saveSession(report);
+    renderReport(report);
   }
 
   toggleBtn.addEventListener('click', () => {
     if (!recording) startSession(); else stopSession();
   });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body){
+      e.preventDefault();
+      if (!recording) startSession(); else stopSession();
+    }
+  });
+
+  // ---------------- scoring ----------------
+
+  function computeScore(data){
+    let score = 70;
+    const {avgWpm, wpmStdDev, fillerRate, volRange, avgPitch, pitchRange} = data;
+    if (avgWpm >= 120 && avgWpm <= 170) score += 15;
+    else if (avgWpm >= 100 && avgWpm <= 190) score += 8;
+    else score -= 5;
+    if (wpmStdDev < 25) score += 8;
+    else if (wpmStdDev > 50) score -= 5;
+    if (fillerRate < 2) score += 7;
+    else if (fillerRate > 5) score -= 8;
+    else score += 2;
+    if (volRange < 20) score += 5;
+    else if (volRange > 30) score -= 3;
+    if (pitchRange > 30) score += 5;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  // ---------------- history ----------------
+
+  function loadSessions(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveSessions(sessions){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(-50)));
+  }
+
+  function saveSession(report){
+    const sessions = loadSessions();
+    sessions.push({
+      date: new Date(startTime).toISOString(),
+      duration: report.durationSec,
+      wpm: report.avgWpm,
+      pitch: report.avgPitch,
+      fillers: report.fillerCount,
+      score: report.score,
+      words: report.wordCount,
+    });
+    saveSessions(sessions);
+  }
 
   // ---------------- report ----------------
 
@@ -549,10 +693,7 @@ import { PitchDetector } from "pitchy";
     ctx.fill();
   }
 
-  function renderReport(){
-    consoleView.classList.add('hidden');
-    reportView.classList.remove('hidden');
-
+  function buildReport(){
     const durationSec = (Date.now()-startTime)/1000;
     const durationMin = durationSec/60;
     const avgWpm = durationMin > 0.05 ? wordCount/durationMin : 0;
@@ -579,35 +720,76 @@ import { PitchDetector } from "pitchy";
 
     const fillerRate = wordCount > 0 ? (fillerCount/wordCount*100) : 0;
 
+    const scoreData = {avgWpm, wpmStdDev, fillerRate, volRange, avgPitch, pitchRange};
+    const score = computeScore(scoreData);
+
+    return {
+      durationSec, durationMin, avgWpm, wpmSeries, volSeries, pitchSeries,
+      firstAvg, secondAvg, wpmMean, wpmStdDev,
+      avgVol, volRange, avgPitch, pitchRange,
+      fillerRate, score, wordCount, fillerCount,
+      fillerBreakdown: {...fillerBreakdown},
+    };
+  }
+
+  function renderReport(r){
+    consoleView.classList.add('hidden');
+    reportView.classList.remove('hidden');
+
     let feedback = [];
-    if (avgWpm === 0){
+    if (r.avgWpm === 0){
       feedback.push('No speech was picked up this session — check that your browser supports live speech recognition (Chrome or Edge) and that the mic wasn\'t muted.');
     } else {
-      if (avgWpm > 175) feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, on the fast side for technical explanations. Aim for roughly 130–160 wpm so an interviewer can follow the logic, not just the words.');
-      else if (avgWpm < 105) feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, on the slow side. A bit more momentum will keep the explanation feeling confident rather than hesitant.');
-      else feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, inside the range that reads as clear and controlled for technical explanations.');
+      if (r.avgWpm > 175) feedback.push('Your average pace was '+Math.round(r.avgWpm)+' wpm, on the fast side for technical explanations. Aim for roughly 130–160 wpm so an interviewer can follow the logic, not just the words.');
+      else if (r.avgWpm < 105) feedback.push('Your average pace was '+Math.round(r.avgWpm)+' wpm, on the slow side. A bit more momentum will keep the explanation feeling confident rather than hesitant.');
+      else feedback.push('Your average pace was '+Math.round(r.avgWpm)+' wpm, inside the range that reads as clear and controlled for technical explanations.');
 
-      if (secondAvg > firstAvg * 1.15) feedback.push('Pace picked up noticeably in the second half of the session ('+Math.round(firstAvg)+' → '+Math.round(secondAvg)+' wpm). That pattern often shows up when explaining gets harder or time pressure kicks in — worth noticing where in your solution it happened.');
-      else if (firstAvg > secondAvg * 1.15) feedback.push('Pace dropped off in the second half ('+Math.round(firstAvg)+' → '+Math.round(secondAvg)+' wpm), which can read as losing confidence partway through. Check whether that lines up with hitting a harder part of the problem.');
+      if (r.secondAvg > r.firstAvg * 1.15) feedback.push('Pace picked up noticeably in the second half ('+Math.round(r.firstAvg)+' → '+Math.round(r.secondAvg)+' wpm). That pattern often shows up when explaining gets harder or time pressure kicks in.');
+      else if (r.firstAvg > r.secondAvg * 1.15) feedback.push('Pace dropped off in the second half ('+Math.round(r.firstAvg)+' → '+Math.round(r.secondAvg)+' wpm), which can read as losing confidence partway through.');
 
-      if (wpmStdDev > 40) feedback.push('Pace was quite variable across the session (±'+Math.round(wpmStdDev)+' wpm swings). Aim for a steadier rhythm — it reads as more deliberate than bursts of fast talk followed by pauses.');
+      if (r.wpmStdDev > 40) feedback.push('Pace was quite variable across the session (±'+Math.round(r.wpmStdDev)+' wpm swings). Aim for a steadier rhythm.');
 
-      if (fillerCount > 0) feedback.push('Caught '+fillerCount+' filler word'+(fillerCount===1?'':'s')+' ("um", "uh", "like", etc.) — about '+fillerRate.toFixed(1)+'% of your words. Pausing silently instead of filling the gap usually reads as more deliberate.');
-      else feedback.push('No filler words caught in the transcript — clean delivery.');
+      if (r.fillerCount > 0){
+        const parts = [];
+        if (r.fillerBreakdown.hesitations) parts.push(r.fillerBreakdown.hesitations+' hesitation'+(r.fillerBreakdown.hesitations===1?'':'s')+' ("um","uh")');
+        if (r.fillerBreakdown.crutch) parts.push(r.fillerBreakdown.crutch+' crutch word'+(r.fillerBreakdown.crutch===1?'':'s')+' ("basically","literally")');
+        if (r.fillerBreakdown.phrases) parts.push(r.fillerBreakdown.phrases+' filler phrase'+(r.fillerBreakdown.phrases===1?'':'s')+' ("you know what i mean")');
+        if (r.fillerBreakdown.words) parts.push(r.fillerBreakdown.words+' filler word'+(r.fillerBreakdown.words===1?'':'s')+' ("like","right")');
+        feedback.push('Caught '+r.fillerCount+' filler'+(r.fillerCount===1?'':'s')+' ('+r.fillerRate.toFixed(1)+'% of words): '+parts.join(', ')+'. Pausing silently instead of filling the gap reads as more deliberate.');
+      }
+      else feedback.push('No filler words caught — clean delivery.');
     }
-    if (volRange > 25) feedback.push('Volume swung by about '+volRange+' dB over the session. If that wasn\'t intentional emphasis, it may mean drifting from the mic — worth a steadier distance next time.');
-    if (avgPitch && pitchRange < 25) feedback.push('Pitch stayed fairly flat (range of only '+pitchRange+' Hz). A little more variation on key points can help emphasis land.');
+    if (r.volRange > 25) feedback.push('Volume swung by about '+r.volRange+' dB. If that wasn\'t intentional emphasis, it may mean drifting from the mic.');
+    if (r.avgPitch && r.pitchRange < 25) feedback.push('Pitch stayed fairly flat (range of only '+r.pitchRange+' Hz). A little more variation on key points can help emphasis land.');
+    if (longestPauseMs > 8000) feedback.push('Longest pause was '+Math.round(longestPauseMs/1000)+'s — might indicate getting stuck on a part of the explanation.');
+
+    const sessions = loadSessions();
+    const historyHtml = sessions.length === 0
+      ? '<div class="history-empty">No previous sessions yet.</div>'
+      : `<table class="history-table"><thead><tr><th>date</th><th>dur</th><th>wpm</th><th>pitch</th><th>fillers</th><th>score</th></tr></thead><tbody>${
+          sessions.slice(-10).reverse().map(s => `<tr><td>${new Date(s.date).toLocaleDateString()}</td><td>${fmtTime(s.duration)}</td><td>${Math.round(s.wpm)}</td><td>${s.pitch ? s.pitch+'Hz' : '–'}</td><td>${s.fillers}</td><td style="color:${s.score>=80?'var(--green)':s.score>=60?'var(--amber)':'var(--red)'}">${s.score}</td></tr>`).join('')
+        }</tbody></table>`;
 
     reportView.innerHTML = `
       <div class="report-hero">
-        <h2>Session report</h2>
-        <p>${fmtTime(durationSec)} elapsed · ${wordCount} words · ${new Date(startTime).toLocaleTimeString()} · pitch via McLeod Pitch Method</p>
+        <div>
+          <h2>Session report</h2>
+          <p>${fmtTime(r.durationSec)} elapsed · ${r.wordCount} words · ${new Date(startTime).toLocaleTimeString()}</p>
+        </div>
+        <div class="report-actions">
+          <button id="exportBtn" class="btn-ghost btn-sm">Export</button>
+          <button id="newSessionBtn" class="btn-ghost btn-sm">New session</button>
+        </div>
+      </div>
+      <div class="score-card">
+        <div class="score">${r.score}</div>
+        <div class="score-label">overall score</div>
       </div>
       <div class="stat-grid">
-        <div class="stat-card"><div class="label">avg pace</div><div class="value">${Math.round(avgWpm)}<small style="font-size:13px;color:var(--text-dim)"> wpm</small></div><div class="sub">±${Math.round(wpmStdDev)} wpm variation</div></div>
-        <div class="stat-card"><div class="label">avg volume</div><div class="value">${Math.round(avgVol)}<small style="font-size:13px;color:var(--text-dim)"> dB</small></div><div class="sub">range ${volRange} dB</div></div>
-        <div class="stat-card"><div class="label">avg pitch</div><div class="value cyan">${avgPitch ? avgPitch : '–'}<small style="font-size:13px;color:var(--text-dim)"> Hz</small></div><div class="sub">range ${pitchRange} Hz</div></div>
-        <div class="stat-card"><div class="label">fillers</div><div class="value">${fillerCount}</div><div class="sub">${fillerRate.toFixed(1)}% of words</div></div>
+        <div class="stat-card"><div class="label">avg pace</div><div class="value">${Math.round(r.avgWpm)}<small style="font-size:13px;color:var(--text-dim)"> wpm</small></div><div class="sub">±${Math.round(r.wpmStdDev)} wpm variation</div></div>
+        <div class="stat-card"><div class="label">avg volume</div><div class="value">${Math.round(r.avgVol)}<small style="font-size:13px;color:var(--text-dim)"> dB</small></div><div class="sub">range ${r.volRange} dB</div></div>
+        <div class="stat-card"><div class="label">avg pitch</div><div class="value cyan">${r.avgPitch ? r.avgPitch : '–'}<small style="font-size:13px;color:var(--text-dim)"> Hz</small></div><div class="sub">range ${r.pitchRange} Hz</div></div>
+        <div class="stat-card"><div class="label">fillers</div><div class="value">${r.fillerCount}</div><div class="sub">${r.fillerBreakdown.hesitations} um/uh · ${r.fillerBreakdown.crutch} crutch · ${r.fillerBreakdown.phrases} phrases · ${r.fillerBreakdown.words} words</div></div>
       </div>
       <div class="chart-card">
         <div class="label"><span>pace over time</span><span>wpm</span></div>
@@ -625,14 +807,15 @@ import { PitchDetector } from "pitchy";
         <div class="label">notes</div>
         <ul>${feedback.map(f => '<li>'+f+'</li>').join('')}</ul>
       </div>
-      <div style="text-align:center;">
-        <button id="newSessionBtn" class="btn-ghost">Start new session</button>
+      <div class="history-panel">
+        <div class="label"><span>past sessions</span><button id="clearHistory" class="btn-sm" style="background:none;border:1px solid var(--line);color:var(--text-faint);cursor:pointer;font-family:var(--mono);font-size:10px;padding:3px 8px;text-transform:uppercase;letter-spacing:0.06em;">clear</button></div>
+        ${historyHtml}
       </div>
     `;
 
-    drawLineChart(document.getElementById('wpmChart'), wpmSeries, 'rgb(255,176,0)');
-    drawLineChart(document.getElementById('volChart'), volSeries, 'rgb(79,209,197)', {min:-60,max:0});
-    drawLineChart(document.getElementById('pitchChart'), pitchSeries, 'rgb(126,217,160)');
+    drawLineChart(document.getElementById('wpmChart'), r.wpmSeries, 'rgb(255,176,0)');
+    drawLineChart(document.getElementById('volChart'), r.volSeries, 'rgb(79,209,197)', {min:-60,max:0});
+    drawLineChart(document.getElementById('pitchChart'), r.pitchSeries, 'rgb(126,217,160)');
 
     document.getElementById('newSessionBtn').addEventListener('click', () => {
       reportView.classList.add('hidden');
@@ -640,6 +823,47 @@ import { PitchDetector } from "pitchy";
       timerEl.textContent = '00:00';
       statusMsg.classList.remove('warn');
       statusMsg.textContent = 'Press start, allow microphone access, then talk through your solution as usual.';
+    });
+
+    document.getElementById('clearHistory').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      renderReport(r);
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const lines = [
+        'CADENCE SESSION REPORT',
+        '======================',
+        'Date: ' + new Date(startTime).toLocaleString(),
+        'Duration: ' + fmtTime(r.durationSec),
+        'Score: ' + r.score + '/100',
+        '',
+        'STATS',
+        '-----',
+        'Avg pace: ' + Math.round(r.avgWpm) + ' wpm (±' + Math.round(r.wpmStdDev) + ')',
+        'Avg volume: ' + Math.round(r.avgVol) + ' dB (range ' + r.volRange + ')',
+        'Avg pitch: ' + (r.avgPitch || '–') + ' Hz (range ' + r.pitchRange + ')',
+        'Words: ' + r.wordCount,
+        'Fillers: ' + r.fillerCount + ' (' + r.fillerRate.toFixed(1) + '%)',
+        '  Hesitations (um/uh): ' + r.fillerBreakdown.hesitations,
+        '  Crutch words (basically/literally): ' + r.fillerBreakdown.crutch,
+        '  Filler phrases (you know what i mean): ' + r.fillerBreakdown.phrases,
+        '  Filler words (like/right): ' + r.fillerBreakdown.words,
+        '',
+        'NOTES',
+        '-----',
+        ...feedback.map(f => '• ' + f),
+        '',
+        'TRANSCRIPT',
+        '----------',
+        finalTranscript.trim(),
+      ];
+      const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'cadence-' + new Date(startTime).toISOString().slice(0,10) + '.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
     });
   }
 
