@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadence — Live Speech Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="importmap">{ "imports": { "pitchy": "https://esm.sh/pitchy@4" } }</script>
+<style>
+  :root{
+    --bg:#0a0e13;
+    --bg-panel:#0f151c;
+    --bg-panel-2:#121922;
+    --line:rgba(255,176,0,0.10);
+    --amber:#ffb000;
+    --amber-dim:#8a6000;
+    --cyan:#4fd1c5;
+    --cyan-dim:#1f5a54;
+    --text:#e9e6df;
+    --text-dim:#7c8794;
+    --text-faint:#4b5563;
+    --red:#ff6b5c;
+    --green:#7ed9a0;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --display:'Space Grotesk', sans-serif;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(255,176,0,0.05), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--display);
+    min-height:100vh;
+    padding:20px;
+  }
+  .app{max-width:1180px;margin:0 auto;}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:16px;
+    padding:14px 20px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:16px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:50%;
+    border:2px solid var(--amber);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--amber);font-size:16px;flex:none;
+    box-shadow:0 0 14px rgba(255,176,0,0.25);
+  }
+  .brand h1{font-size:19px;margin:0;font-weight:600;letter-spacing:0.02em;}
+  .eyebrow{
+    margin:2px 0 0;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:0.09em;text-transform:uppercase;color:var(--text-dim);
+  }
+  .session-controls{display:flex;align-items:center;gap:14px;}
+  .timer{font-family:var(--mono);font-size:20px;color:var(--amber);letter-spacing:0.03em;min-width:64px;text-align:right;}
+  .btn-primary, .btn-ghost{
+    font-family:var(--mono);font-size:12.5px;letter-spacing:0.05em;text-transform:uppercase;
+    padding:11px 20px;border-radius:var(--radius);cursor:pointer;border:1px solid transparent;
+    transition:transform .12s ease, background .15s ease, border-color .15s ease;
+  }
+  .btn-primary{background:var(--amber);color:#1a1200;font-weight:600;border-color:var(--amber);}
+  .btn-primary:hover{transform:translateY(-1px);}
+  .btn-primary.recording{background:var(--red);border-color:var(--red);color:#210505;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border-color:var(--line);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+
+  .console{
+    display:grid;
+    grid-template-columns:1fr 200px;
+    grid-template-rows:auto auto;
+    gap:16px;
+  }
+  .scope-panel{
+    grid-column:1;grid-row:1;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+  }
+  canvas#scope{
+    width:100%;height:150px;display:block;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 24px, var(--line) 24px, var(--line) 25px),
+      repeating-linear-gradient(90deg, transparent, transparent 24px, var(--line) 24px, var(--line) 25px),
+      var(--bg-panel-2);
+    border-radius:var(--radius);
+  }
+  .meter-row{display:flex;gap:14px;margin-top:14px;align-items:center;}
+  .meter-block{display:flex;align-items:center;gap:10px;flex:1;}
+  .meter-label{
+    font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--text-dim);width:52px;flex:none;
+  }
+  .meter-track{
+    flex:1;height:10px;border-radius:5px;background:var(--bg-panel-2);
+    border:1px solid var(--line);overflow:hidden;
+  }
+  .meter-fill{
+    height:100%;width:0%;border-radius:5px;
+    background:linear-gradient(90deg, var(--cyan-dim), var(--cyan) 70%, var(--amber) 100%);
+    transition:width .08s linear;
+  }
+  .meter-value{font-family:var(--mono);font-size:12px;color:var(--text-dim);width:66px;text-align:right;flex:none;}
+
+  .readouts{
+    grid-column:2;grid-row:1;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .readout{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;flex:1;display:flex;flex-direction:column;justify-content:center;
+  }
+  .readout-label{
+    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);
+  }
+  .readout-value{
+    font-family:var(--mono);font-size:25px;color:var(--amber);font-weight:600;line-height:1.5;
+  }
+  .readout-value small{font-size:11px;color:var(--text-dim);margin-left:4px;font-weight:400;}
+  #pitchValue{color:var(--cyan);}
+
+  .transcript-panel{
+    grid-column:1/-1;grid-row:2;
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .panel-label{
+    font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);
+    display:block;margin-bottom:8px;
+  }
+  .transcript{
+    font-family:var(--mono);font-size:13.5px;line-height:1.7;color:var(--text);
+    max-height:130px;overflow-y:auto;white-space:pre-wrap;
+  }
+  .transcript .interim{color:var(--text-faint);}
+  .filler{color:var(--red);}
+
+  .status-msg{
+    font-family:var(--mono);font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;
+  }
+  .status-msg.warn{color:var(--red);}
+
+  .report{display:flex;flex-direction:column;gap:16px;}
+  .report.hidden, .console.hidden{display:none;}
+  .report-hero{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 24px;
+  }
+  .report-hero h2{margin:0 0 4px;font-size:22px;font-weight:600;}
+  .report-hero p{margin:0;color:var(--text-dim);font-family:var(--mono);font-size:12px;}
+  .stat-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;
+  }
+  .stat-card{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;
+  }
+  .stat-card .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-dim);}
+  .stat-card .value{font-family:var(--mono);font-size:26px;color:var(--amber);font-weight:600;margin-top:6px;}
+  .stat-card .value.cyan{color:var(--cyan);}
+  .stat-card .sub{font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .chart-card{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;
+  }
+  .chart-card .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-dim);margin-bottom:8px;display:flex;justify-content:space-between;}
+  canvas.chart{width:100%;height:110px;display:block;}
+
+  .feedback{
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .feedback .label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-dim);margin-bottom:10px;}
+  .feedback ul{margin:0;padding-left:18px;}
+  .feedback li{margin-bottom:8px;line-height:1.55;font-size:14.5px;}
+  .feedback li::marker{color:var(--amber);}
+
+  @media (max-width:760px){
+    .console{grid-template-columns:1fr;}
+    .readouts{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;}
+    .readout{min-width:120px;}
+    .transcript-panel{grid-row:3;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .btn-primary, .meter-fill{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">◉</div>
+      <div>
+        <h1>Cadence</h1>
+        <p class="eyebrow">live speech console — pace · volume · pitch</p>
+      </div>
+    </div>
+    <div class="session-controls">
+      <span id="timer" class="timer">00:00</span>
+      <button id="toggleBtn" class="btn-primary">Start session</button>
+    </div>
+  </header>
+
+  <main id="consoleView" class="console">
+    <section class="scope-panel">
+      <canvas id="scope"></canvas>
+      <div class="meter-row">
+        <div class="meter-block">
+          <span class="meter-label">volume</span>
+          <div class="meter-track"><div id="volMeterFill" class="meter-fill"></div></div>
+          <span id="volValue" class="meter-value">−60 dB</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="readouts">
+      <div class="readout">
+        <span class="readout-label">pace</span>
+        <span id="wpmValue" class="readout-value">0<small>wpm</small></span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">pitch</span>
+        <span id="pitchValue" class="readout-value">–<small>Hz</small></span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">clarity</span>
+        <span id="clarityValue" class="readout-value">–<small>%</small></span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">words</span>
+        <span id="wordsValue" class="readout-value">0</span>
+      </div>
+      <div class="readout">
+        <span class="readout-label">fillers</span>
+        <span id="fillerValue" class="readout-value">0</span>
+      </div>
+    </aside>
+
+    <section class="transcript-panel">
+      <span class="panel-label">transcript</span>
+      <div id="transcript" class="transcript"></div>
+    </section>
+  </main>
+
+  <main id="reportView" class="report hidden"></main>
+
+  <p id="statusMsg" class="status-msg">Press start, allow microphone access, then talk through your solution as usual.</p>
+</div>
+
+<script type="module">
+import { PitchDetector } from "pitchy";
+
+(function(){
+  const toggleBtn = document.getElementById('toggleBtn');
+  const timerEl = document.getElementById('timer');
+  const scopeCanvas = document.getElementById('scope');
+  const scopeCtx = scopeCanvas.getContext('2d');
+  const volFill = document.getElementById('volMeterFill');
+  const volValue = document.getElementById('volValue');
+  const wpmValue = document.getElementById('wpmValue');
+  const pitchValue = document.getElementById('pitchValue');
+  const clarityValue = document.getElementById('clarityValue');
+  const wordsValue = document.getElementById('wordsValue');
+  const fillerValue = document.getElementById('fillerValue');
+  const transcriptEl = document.getElementById('transcript');
+  const statusMsg = document.getElementById('statusMsg');
+  const consoleView = document.getElementById('consoleView');
+  const reportView = document.getElementById('reportView');
+
+  const FILLER_RE = /\b(um+|uh+|erm+|like|you know|i mean|so basically|actually)\b/gi;
+
+  let audioCtx, analyser, source, stream, recognition, pitchDetector;
+  let recording = false;
+  let startTime = 0;
+  let timerInterval = null;
+  let bucketInterval = null;
+  let scopeRaf = null;
+  let pitchInterval = null;
+
+  let wordCount = 0;
+  let fillerCount = 0;
+  let finalTranscript = '';
+  let currentPitch = -1;
+  let currentClarity = 0;
+  let recognitionSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  let buckets = [];
+  let bucketWordsAccum = 0;
+  let bucketVolSamples = [];
+  let bucketPitchSamples = [];
+  let bucketClaritySamples = [];
+  const BUCKET_SEC = 3;
+
+  function resizeScope(){
+    scopeCanvas.width = scopeCanvas.clientWidth * devicePixelRatio;
+    scopeCanvas.height = scopeCanvas.clientHeight * devicePixelRatio;
+  }
+  window.addEventListener('resize', resizeScope);
+
+  function fmtTime(sec){
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return m+':'+s;
+  }
+
+  function drawScope(){
+    const w = scopeCanvas.width, h = scopeCanvas.height;
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteTimeDomainData(dataArray);
+
+    scopeCtx.clearRect(0,0,w,h);
+    scopeCtx.lineWidth = 2 * devicePixelRatio;
+    scopeCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--amber').trim();
+    scopeCtx.beginPath();
+    const sliceWidth = w / bufferLength;
+    let x = 0;
+    let sumSq = 0;
+    for (let i=0;i<bufferLength;i++){
+      const v = dataArray[i]/128.0;
+      sumSq += (v-1)*(v-1);
+      const y = (v * h)/2;
+      if (i===0) scopeCtx.moveTo(x,y); else scopeCtx.lineTo(x,y);
+      x += sliceWidth;
+    }
+    scopeCtx.stroke();
+
+    const rms = Math.sqrt(sumSq/bufferLength);
+    const db = rms > 0 ? 20*Math.log10(rms) : -60;
+    const clamped = Math.max(-60, Math.min(0, db));
+    const pct = ((clamped + 60)/60) * 100;
+    volFill.style.width = pct.toFixed(1)+'%';
+    volValue.textContent = Math.round(clamped)+' dB';
+
+    bucketVolSamples.push(clamped);
+
+    scopeRaf = requestAnimationFrame(drawScope);
+  }
+
+  function pitchTick(){
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Float32Array(bufferLength);
+    analyser.getFloatTimeDomainData(dataArray);
+    const [freq, clarity] = pitchDetector.findPitch(dataArray, audioCtx.sampleRate);
+    currentPitch = freq;
+    currentClarity = clarity;
+    if (freq > 0 && clarity > 0.85){
+      pitchValue.innerHTML = Math.round(freq)+'<small>Hz</small>';
+      clarityValue.innerHTML = Math.round(clarity*100)+'<small>%</small>';
+      bucketPitchSamples.push(freq);
+      bucketClaritySamples.push(clarity);
+    } else {
+      pitchValue.innerHTML = '–<small>Hz</small>';
+      clarityValue.innerHTML = Math.round(clarity*100)+'<small>%</small>';
+    }
+  }
+
+  function pushBucket(){
+    const elapsedMin = BUCKET_SEC/60;
+    const bucketWpm = bucketWordsAccum / elapsedMin;
+    const avgVol = bucketVolSamples.length ? bucketVolSamples.reduce((a,b)=>a+b,0)/bucketVolSamples.length : -60;
+    const avgPitch = bucketPitchSamples.length ? bucketPitchSamples.reduce((a,b)=>a+b,0)/bucketPitchSamples.length : -1;
+    buckets.push({t: buckets.length*BUCKET_SEC, wpm: bucketWpm, volDb: avgVol, pitch: avgPitch});
+    bucketWordsAccum = 0;
+    bucketVolSamples = [];
+    bucketPitchSamples = [];
+    bucketClaritySamples = [];
+
+    const elapsedTotalMin = (Date.now()-startTime)/60000;
+    const overallWpm = elapsedTotalMin > 0 ? wordCount/elapsedTotalMin : 0;
+    wpmValue.innerHTML = Math.round(overallWpm)+'<small>wpm</small>';
+  }
+
+  function setupRecognition(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i=event.resultIndex; i<event.results.length; i++){
+        const res = event.results[i];
+        const text = res[0].transcript;
+        if (res.isFinal){
+          const fillers = text.match(FILLER_RE);
+          if (fillers){ fillerCount += fillers.length; fillerValue.textContent = fillerCount; }
+          const words = text.trim().split(/\s+/).filter(Boolean);
+          wordCount += words.length;
+          bucketWordsAccum += words.length;
+          wordsValue.textContent = wordCount;
+          finalTranscript += text + ' ';
+        } else {
+          interim += text;
+        }
+      }
+      renderTranscript(interim);
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') return;
+      if (e.error === 'not-allowed'){
+        statusMsg.textContent = 'Microphone access was blocked — allow it in your browser to continue.';
+        statusMsg.classList.add('warn');
+      }
+    };
+
+    recognition.onend = () => {
+      if (recording) { try { recognition.start(); } catch(e){} }
+    };
+
+    recognition.start();
+  }
+
+  function renderTranscript(interim){
+    const highlighted = finalTranscript.replace(FILLER_RE, m => '§'+m+'§');
+    const parts = highlighted.split('§');
+    let html = '';
+    parts.forEach((p,i) => {
+      if (FILLER_RE.test(p)) { html += '<span class="filler">'+p+'</span>'; FILLER_RE.lastIndex = 0; }
+      else html += p;
+    });
+    html += '<span class="interim">'+interim+'</span>';
+    transcriptEl.innerHTML = html;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  async function startSession(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    } catch(err){
+      statusMsg.textContent = 'Could not access the microphone. If you\'re viewing this inside an embedded preview, open the file directly in your browser and try again.';
+      statusMsg.classList.add('warn');
+      return;
+    }
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    pitchDetector = PitchDetector.forFloat32Array(analyser.fftSize);
+
+    resizeScope();
+    recording = true;
+    startTime = Date.now();
+    wordCount = 0; fillerCount = 0; finalTranscript = ''; buckets = [];
+    bucketWordsAccum = 0; bucketVolSamples = []; bucketPitchSamples = []; bucketClaritySamples = [];
+    wordsValue.textContent = '0'; fillerValue.textContent = '0';
+    wpmValue.innerHTML = '0<small>wpm</small>';
+    pitchValue.innerHTML = '–<small>Hz</small>';
+    clarityValue.innerHTML = '–<small>%</small>';
+    transcriptEl.innerHTML = '';
+
+    toggleBtn.textContent = 'Stop session';
+    toggleBtn.classList.add('recording');
+    statusMsg.classList.remove('warn');
+    statusMsg.textContent = recognitionSupported
+      ? 'Recording — talk through your problem as you normally would.'
+      : 'Recording (pace + transcript unavailable — your browser doesn\'t support live speech recognition; try Chrome or Edge). Volume and pitch still tracked.';
+
+    drawScope();
+    pitchInterval = setInterval(pitchTick, 80);
+    bucketInterval = setInterval(pushBucket, BUCKET_SEC*1000);
+    timerInterval = setInterval(() => {
+      timerEl.textContent = fmtTime((Date.now()-startTime)/1000);
+    }, 250);
+
+    if (recognitionSupported) setupRecognition();
+  }
+
+  function stopSession(){
+    recording = false;
+    clearInterval(timerInterval);
+    clearInterval(bucketInterval);
+    clearInterval(pitchInterval);
+    cancelAnimationFrame(scopeRaf);
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (audioCtx) audioCtx.close();
+
+    toggleBtn.textContent = 'Start session';
+    toggleBtn.classList.remove('recording');
+    statusMsg.textContent = 'Session ended.';
+
+    if (buckets.length === 0 || bucketWordsAccum > 0) pushBucket();
+    renderReport();
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    if (!recording) startSession(); else stopSession();
+  });
+
+  // ---------------- report ----------------
+
+  function drawLineChart(canvas, series, color, opts){
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+    const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+    ctx.clearRect(0,0,w,h);
+    if (series.length < 2){
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-faint').trim();
+      ctx.font = (12*devicePixelRatio)+'px monospace';
+      ctx.fillText('not enough data', 8*devicePixelRatio, h/2);
+      return;
+    }
+    const min = opts && opts.min !== undefined ? opts.min : Math.min(...series);
+    const max = opts && opts.max !== undefined ? opts.max : Math.max(...series);
+    const range = (max-min) || 1;
+    const pad = 8*devicePixelRatio;
+    const stepX = (w - pad*2)/(series.length-1);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i=0;i<=2;i++){
+      const y = pad + (h-pad*2)*(i/2);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.lineWidth = 2*devicePixelRatio;
+    ctx.strokeStyle = color;
+    series.forEach((v,i) => {
+      const x = pad + i*stepX;
+      const y = h - pad - ((v-min)/range)*(h-pad*2);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.lineTo(pad+(series.length-1)*stepX, h-pad);
+    ctx.lineTo(pad, h-pad);
+    ctx.closePath();
+    ctx.fillStyle = color.replace(')', ',0.08)').replace('rgb','rgba');
+    ctx.fill();
+  }
+
+  function renderReport(){
+    consoleView.classList.add('hidden');
+    reportView.classList.remove('hidden');
+
+    const durationSec = (Date.now()-startTime)/1000;
+    const durationMin = durationSec/60;
+    const avgWpm = durationMin > 0.05 ? wordCount/durationMin : 0;
+
+    const wpmSeries = buckets.map(b => Math.round(b.wpm));
+    const volSeries = buckets.map(b => Math.round(b.volDb));
+    const pitchSeries = buckets.filter(b => b.pitch > 0).map(b => Math.round(b.pitch));
+
+    const half = Math.floor(wpmSeries.length/2) || 1;
+    const firstHalf = wpmSeries.slice(0, half);
+    const secondHalf = wpmSeries.slice(half);
+    const firstAvg = firstHalf.length ? firstHalf.reduce((a,b)=>a+b,0)/firstHalf.length : avgWpm;
+    const secondAvg = secondHalf.length ? secondHalf.reduce((a,b)=>a+b,0)/secondHalf.length : avgWpm;
+
+    const wpmMean = wpmSeries.length ? wpmSeries.reduce((a,b)=>a+b,0)/wpmSeries.length : 0;
+    const wpmVariance = wpmSeries.length ? wpmSeries.reduce((s,v)=>s+(v-wpmMean)**2,0)/wpmSeries.length : 0;
+    const wpmStdDev = Math.sqrt(wpmVariance);
+
+    const avgVol = volSeries.length ? volSeries.reduce((a,b)=>a+b,0)/volSeries.length : -60;
+    const volRange = volSeries.length ? Math.max(...volSeries)-Math.min(...volSeries) : 0;
+
+    const avgPitch = pitchSeries.length ? Math.round(pitchSeries.reduce((a,b)=>a+b,0)/pitchSeries.length) : null;
+    const pitchRange = pitchSeries.length ? Math.max(...pitchSeries)-Math.min(...pitchSeries) : 0;
+
+    const fillerRate = wordCount > 0 ? (fillerCount/wordCount*100) : 0;
+
+    let feedback = [];
+    if (avgWpm === 0){
+      feedback.push('No speech was picked up this session — check that your browser supports live speech recognition (Chrome or Edge) and that the mic wasn\'t muted.');
+    } else {
+      if (avgWpm > 175) feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, on the fast side for technical explanations. Aim for roughly 130–160 wpm so an interviewer can follow the logic, not just the words.');
+      else if (avgWpm < 105) feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, on the slow side. A bit more momentum will keep the explanation feeling confident rather than hesitant.');
+      else feedback.push('Your average pace was '+Math.round(avgWpm)+' wpm, inside the range that reads as clear and controlled for technical explanations.');
+
+      if (secondAvg > firstAvg * 1.15) feedback.push('Pace picked up noticeably in the second half of the session ('+Math.round(firstAvg)+' → '+Math.round(secondAvg)+' wpm). That pattern often shows up when explaining gets harder or time pressure kicks in — worth noticing where in your solution it happened.');
+      else if (firstAvg > secondAvg * 1.15) feedback.push('Pace dropped off in the second half ('+Math.round(firstAvg)+' → '+Math.round(secondAvg)+' wpm), which can read as losing confidence partway through. Check whether that lines up with hitting a harder part of the problem.');
+
+      if (wpmStdDev > 40) feedback.push('Pace was quite variable across the session (±'+Math.round(wpmStdDev)+' wpm swings). Aim for a steadier rhythm — it reads as more deliberate than bursts of fast talk followed by pauses.');
+
+      if (fillerCount > 0) feedback.push('Caught '+fillerCount+' filler word'+(fillerCount===1?'':'s')+' ("um", "uh", "like", etc.) — about '+fillerRate.toFixed(1)+'% of your words. Pausing silently instead of filling the gap usually reads as more deliberate.');
+      else feedback.push('No filler words caught in the transcript — clean delivery.');
+    }
+    if (volRange > 25) feedback.push('Volume swung by about '+volRange+' dB over the session. If that wasn\'t intentional emphasis, it may mean drifting from the mic — worth a steadier distance next time.');
+    if (avgPitch && pitchRange < 25) feedback.push('Pitch stayed fairly flat (range of only '+pitchRange+' Hz). A little more variation on key points can help emphasis land.');
+
+    reportView.innerHTML = `
+      <div class="report-hero">
+        <h2>Session report</h2>
+        <p>${fmtTime(durationSec)} elapsed · ${wordCount} words · ${new Date(startTime).toLocaleTimeString()} · pitch via McLeod Pitch Method</p>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">avg pace</div><div class="value">${Math.round(avgWpm)}<small style="font-size:13px;color:var(--text-dim)"> wpm</small></div><div class="sub">±${Math.round(wpmStdDev)} wpm variation</div></div>
+        <div class="stat-card"><div class="label">avg volume</div><div class="value">${Math.round(avgVol)}<small style="font-size:13px;color:var(--text-dim)"> dB</small></div><div class="sub">range ${volRange} dB</div></div>
+        <div class="stat-card"><div class="label">avg pitch</div><div class="value cyan">${avgPitch ? avgPitch : '–'}<small style="font-size:13px;color:var(--text-dim)"> Hz</small></div><div class="sub">range ${pitchRange} Hz</div></div>
+        <div class="stat-card"><div class="label">fillers</div><div class="value">${fillerCount}</div><div class="sub">${fillerRate.toFixed(1)}% of words</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="label"><span>pace over time</span><span>wpm</span></div>
+        <canvas class="chart" id="wpmChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="label"><span>volume over time</span><span>dB</span></div>
+        <canvas class="chart" id="volChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="label"><span>pitch over time</span><span>Hz</span></div>
+        <canvas class="chart" id="pitchChart"></canvas>
+      </div>
+      <div class="feedback">
+        <div class="label">notes</div>
+        <ul>${feedback.map(f => '<li>'+f+'</li>').join('')}</ul>
+      </div>
+      <div style="text-align:center;">
+        <button id="newSessionBtn" class="btn-ghost">Start new session</button>
+      </div>
+    `;
+
+    drawLineChart(document.getElementById('wpmChart'), wpmSeries, 'rgb(255,176,0)');
+    drawLineChart(document.getElementById('volChart'), volSeries, 'rgb(79,209,197)', {min:-60,max:0});
+    drawLineChart(document.getElementById('pitchChart'), pitchSeries, 'rgb(126,217,160)');
+
+    document.getElementById('newSessionBtn').addEventListener('click', () => {
+      reportView.classList.add('hidden');
+      consoleView.classList.remove('hidden');
+      timerEl.textContent = '00:00';
+      statusMsg.classList.remove('warn');
+      statusMsg.textContent = 'Press start, allow microphone access, then talk through your solution as usual.';
+    });
+  }
+
+  resizeScope();
+  if (!recognitionSupported){
+    statusMsg.textContent = 'This browser doesn\'t support live speech recognition — pace, word count and transcript will be unavailable. Volume and pitch still work. Try Chrome or Edge for full features.';
+  }
+})();
+</script>
+</body>
+</html>
