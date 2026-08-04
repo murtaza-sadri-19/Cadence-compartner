@@ -221,24 +221,60 @@
   @media (prefers-reduced-motion:reduce){
     .btn-primary, .meter-fill{transition:none;}
   }
+/* Modal styles */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+.modal-content {
+  background-color: var(--bg-panel);
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid var(--line);
+  width: 80%; /* Could be more or less, depending on screen size */
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.close {
+  color: var(--text-dim);
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.close:hover,
+.close:focus {
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">◉</div>
-      <div>
-        <h1>Cadence</h1>
-        <p class="eyebrow">live speech console — pace · volume · pitch</p>
+   <header class="topbar">
+     <div class="brand">
+       <div class="brand-mark">◉</div>
+       <div>
+         <h1>Cadence</h1>
+         <p class="eyebrow">live speech console — pace · volume · pitch</p>
+       </div>
+     </div>
+      <div class="session-controls">
+        <span id="timer" class="timer">00:00</span>
+        <button id="toggleBtn" class="btn-primary">Start session <span class="kbd">Space</span></button>
+        <a href="https://github.com/murtaza-sadri-19/Cadence-compartner" target="_blank" class="btn-ghost" style="margin-left: 8px;">★ Star on GitHub</a>
+        <button id="helpBtn" class="btn-ghost" style="margin-left: 8px;">?</button>
       </div>
-    </div>
-    <div class="session-controls">
-      <span id="timer" class="timer">00:00</span>
-      <button id="toggleBtn" class="btn-primary">Start session <span class="kbd">Space</span></button>
-    </div>
-  </header>
+   </header>
 
   <main id="consoleView" class="console">
     <section class="scope-panel">
@@ -867,11 +903,79 @@ import { PitchDetector } from "pitchy";
     });
   }
 
-  resizeScope();
-  if (!recognitionSupported){
-    statusMsg.textContent = 'This browser doesn\'t support live speech recognition — pace, word count and transcript will be unavailable. Volume and pitch still work. Try Chrome or Edge for full features.';
+   resizeScope();
+   if (!recognitionSupported){
+     statusMsg.textContent = 'This browser doesn\'t support live speech recognition — pace, word count and transcript will be unavailable. Volume and pitch still work. Try Chrome or Edge for full features.';
+   }
+ })();
+ </script>
+
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Cadence - Live Speech Console Help</h2>
+    <p><strong>Cadence</strong> is a real-time voice analysis console for interview practice. It runs entirely in-browser with no backend, ensuring no data leaves your machine.</p>
+    <h3>Features:</h3>
+    <ul>
+      <li><strong>WPM (Words Per Minute)</strong>: Tracks your speaking pace</li>
+      <li><strong>Volume (dB)</strong>: Measures your speaking volume (displayed as -60 to 0 dB, where 0 is loudest and -60 is quietest)</li>
+      <li><strong>Pitch (Hz)</strong>: Analyzes your voice pitch</li>
+      <li><strong>Filler Words</strong>: Detects "um", "uh", "like", "you know", etc.</li>
+      <li><strong>Live Transcript</strong>: Real-time speech-to-text transcription</li>
+      <li><strong>Post-Session Report</strong>: Generates charts and auto-generated feedback after each session</li>
+    </ul>
+    <h3>How to Use:</h3>
+    <ol>
+      <li>Click "Start session" or press Spacebar</li>
+      <li>Allow microphone access when prompted</li>
+      <li>Speak naturally through your solution/explanation</li>
+      <li>Click "Stop session" or press Spacebar when finished</li>
+      <li>Review your session report with charts and feedback</li>
+    </ol>
+    <h3>Requirements:</h3>
+    <ul>
+      <li>Chrome or Edge browser required for speech recognition (WPM, transcript, filler detection)</li>
+      <li>Volume and pitch analysis work in all modern browsers</li>
+      <li>No installation required - runs entirely in-browser</li>
+    </ul>
+    <h3>Important Note:</h3>
+    <p><strong>Values shown are software-based estimates:</strong> The WPM, volume, pitch, and filler word measurements are software estimations based on audio analysis algorithms. They may not precisely match professional hardware measurements and should be used for relative improvement tracking rather than absolute scientific measurement.</p>
+    <h3>Privacy:</h3>
+    <p>All audio processing happens locally in your browser. No audio data is ever sent to a server or stored outside your machine.</p>
+    <p>Session data (metrics only) is stored locally in your browser's storage for history tracking.</p>
+    <h3>Important Note About Measurements:</h3>
+    <p>The measurements provided by Cadence (WPM, volume, pitch, etc.) are estimates based on software analysis of your audio input. These values are intended for relative comparison and self-improvement tracking, not as precise scientific measurements. Actual volume levels, pitch frequencies, and speaking rates may vary based on your microphone quality, distance from the mic, background noise, and other environmental factors. Use these metrics as general guides to help you become more aware of your speaking patterns rather than as precise diagnostic tools.</p>
+  </div>
+</div>
+
+<script>
+// Get the modal
+var modal = document.getElementById("helpModal");
+
+// Get the button that opens the modal
+var btn = document.getElementById("helpBtn");
+
+// Get the <span> element that closes the modal
+var span = document.getElementsByClassName("close")[0];
+
+// When the user clicks the button, open the modal
+btn.onclick = function() {
+  modal.style.display = "block";
+}
+
+// When the user clicks on <span> (x), close the modal
+span.onclick = function() {
+  modal.style.display = "none";
+}
+
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
   }
-})();
+}
 </script>
+
 </body>
 </html>
