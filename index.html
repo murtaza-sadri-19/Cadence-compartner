@@ -8,35 +8,33 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script type="importmap">{ "imports": { "pitchy": "https://esm.sh/pitchy@4" } }</script>
 <style>
-  :root{
-    --bg:#0a0e13;
-    --bg-panel:#0f151c;
-    --bg-panel-2:#121922;
-    --line:rgba(255,176,0,0.10);
-    --amber:#ffb000;
-    --amber-dim:#8a6000;
-    --cyan:#4fd1c5;
-    --cyan-dim:#1f5a54;
-    --text:#e9e6df;
-    --text-dim:#7c8794;
-    --text-faint:#4b5563;
-    --red:#ff6b5c;
-    --green:#7ed9a0;
-    --mono:'IBM Plex Mono', ui-monospace, monospace;
-    --display:'Space Grotesk', sans-serif;
-    --radius:3px;
-  }
+:root{
+  --bg:#0a0e13;
+  --bg-panel:#0f151c;
+  --bg-panel-2:#121922;
+  --line:rgba(255,140,0,0.10);
+  --amber:#ff8c00;
+  --amber-dim:#b35e00;
+  --cyan:#00d1b2;
+  --cyan-dim:#008a7a;
+  --text:#e0e0e0;
+  --text-dim:#a0a0a0;
+  --text-faint:#606060;
+  --red:#ff6b6b;
+  --green:#6bcf7f;
+  --radius:3px;
+}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{
-    background:
-      radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(255,176,0,0.05), transparent 60%),
-      var(--bg);
-    color:var(--text);
-    font-family:var(--display);
-    min-height:100vh;
-    padding:20px;
-  }
+body{
+  background:
+    radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(255,140,0,0.05), transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--display);
+  min-height:100vh;
+  padding:20px;
+}
   .app{max-width:1180px;margin:0 auto;}
 
   .topbar{
@@ -54,7 +52,7 @@
     border:2px solid var(--amber);
     display:flex;align-items:center;justify-content:center;
     color:var(--amber);font-size:16px;flex:none;
-    box-shadow:0 0 14px rgba(255,176,0,0.25);
+     box-shadow:0 0 14px rgba(255,140,0,0.25);
   }
   .brand h1{font-size:19px;margin:0;font-weight:600;letter-spacing:0.02em;}
   .eyebrow{
