@@ -795,7 +795,20 @@ import { PitchDetector } from "pitchy";
       }
       else feedback.push('No filler words caught — clean delivery.');
     }
-    if (r.volRange > 25) feedback.push('Volume swung by about '+r.volRange+' dB. If that wasn\'t intentional emphasis, it may mean drifting from the mic.');
+     if (r.volRange > 25) {
+       const avgVol = r.avgVol;
+       if (avgVol > -20) {
+         feedback.push('Your volume was generally loud (average '+Math.round(avgVol)+' dB) with good variation ('+Math.round(r.volRange)+' dB range), which can help emphasize key points.');
+       } else if (avgVol < -35) {
+         feedback.push('Your volume was generally quiet (average '+Math.round(avgVol)+' dB) but with good variation ('+Math.round(r.volRange)+' dB range). Consider speaking more loudly for better clarity.');
+       } else {
+         feedback.push('Your volume showed good variation ('+Math.round(r.volRange)+' dB range) around an average of '+Math.round(avgVol)+' dB, indicating dynamic speaking which helps maintain listener engagement.');
+       }
+     } else if (r.volRange > 15) {
+       feedback.push('Your volume showed moderate variation ('+Math.round(r.volRange)+' dB range). Consider varying your volume more to emphasize important points.');
+     } else {
+       feedback.push('Your volume was quite consistent (only '+Math.round(r.volRange)+' dB variation). Try varying your volume more to add emphasis and maintain listener interest.');
+     }
     if (r.avgPitch && r.pitchRange < 25) feedback.push('Pitch stayed fairly flat (range of only '+r.pitchRange+' Hz). A little more variation on key points can help emphasis land.');
     if (longestPauseMs > 8000) feedback.push('Longest pause was '+Math.round(longestPauseMs/1000)+'s — might indicate getting stuck on a part of the explanation.');
 
@@ -946,6 +959,9 @@ import { PitchDetector } from "pitchy";
     <p>Session data (metrics only) is stored locally in your browser's storage for history tracking.</p>
     <h3>Important Note About Measurements:</h3>
     <p>The measurements provided by Cadence (WPM, volume, pitch, etc.) are estimates based on software analysis of your audio input. These values are intended for relative comparison and self-improvement tracking, not as precise scientific measurements. Actual volume levels, pitch frequencies, and speaking rates may vary based on your microphone quality, distance from the mic, background noise, and other environmental factors. Use these metrics as general guides to help you become more aware of your speaking patterns rather than as precise diagnostic tools.</p>
+    
+    <h3>About Volume Scale:</h3>
+    <p>The volume meter shows -60 to 0 dB, where 0 dB represents the loudest input (without distortion) and -60 dB represents very quiet sound. This follows standard audio measurement conventions where 0 dB is the maximum amplitude before clipping. In practice, normal speech typically ranges between -30 dB and -15 dB depending on speaking intensity and microphone distance.</p>
   </div>
 </div>
 
